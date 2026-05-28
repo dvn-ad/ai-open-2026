@@ -1,0 +1,58 @@
+{
+  "document_type": "Tax Invoice/Bill of Supply/Cash Memo",
+  "original_for": "Recipient",
+  "seller": {
+    "name": "Go Tech Sales Pvt. Ltd.",
+    "address": {
+      "unit": "Unit # 2-A Suite - 208, Busa Industrial Estate, Near Century Bazar, Worli",
+      "city": "Mumbai",
+      "state": "Maharashtra",
+      "pin_code": "400025",
+      "country": "IN"
+    },
+    "pan_number": "AAGCG8614F",
+    "gst_registration_number": "27AAGCG8614F1ZK"
+  },
+  "buyer": {
+    "name": "APPSBEE TECHNOLOGIES",
+    "address": {
+      "unit": "12/1/1/1, Gadadhar Mistry 2nd Bye Lane, Street 360, New Town",
+      "city": "Howrah",
+      "state": "West Bengal",
+      "pin_code": "711104",
+      "country": "IN"
+    },
+    "gst_registration_number": "19ABNFA0631P1Z2",
+    "state_ut_code": "19"
+  },
+  "order_details": {
+    "order_number": "407-7867100-1421942",
+    "order_date": "07.12.2020"
+  },
+  "invoice_details": {
+    "invoice_number": "IN-8737",
+    "invoice_date": "07.12.2020",
+    "invoice_details": {
+      "item": {
+        "description": "Aanilosi for Polar Heart Rate Sensor/Monitor/ Fitness Tracker Charging Case with Hard Case Rfs H7/H10/Wearlink (Black) | B074M0NRPJ ( NTB074M0NRJPJ )",
+        "unit_price": "₹2,824.58",
+        "quantity": "1",
+        "net_amount": "₹2,824.58",
+        "tax_type": "IGST",
+        "tax_amount": "₹508.42",
+        "total_amount": "₹3,333.00"
+      },
+      "shipping_charges": {
+        "amount": "₹84.75",
+        "tax_type": "IGST",
+        "tax_amount": "₹15.25",
+        "total_amount": "₹100.00"
+      }
+    },
+    "total_amount": "₹221.67",
+    "total_amount_in_words": "Three Thousand Four Hundred Thirty-three only",
+    "reverse_charge": "No"
+  },
+  "seller_signature": "Jharkh",
+  "seller_authorization": "For Go Tech Sales Pvt. Ltd."
+}

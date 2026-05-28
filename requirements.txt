@@ -78,6 +78,7 @@ nvidia-nccl-cu13==2.29.7
 nvidia-nvjitlink==13.0.88
 nvidia-nvshmem-cu13==3.4.5
 nvidia-nvtx==13.0.85
+ollama==0.6.2
 omegaconf==2.3.0
 openai==2.38.0
 opencv-contrib-python==4.10.0.84

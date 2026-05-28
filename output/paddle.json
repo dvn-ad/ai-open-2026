@@ -1,0 +1,50 @@
+{
+    "input_path": "./images/3.jpg",
+    "page_index": null,
+    "page_count": null,
+    "width": 640,
+    "height": 640,
+    "model_settings": {
+        "use_doc_preprocessor": true,
+        "use_layout_detection": false,
+        "use_chart_recognition": false,
+        "use_seal_recognition": false,
+        "use_ocr_for_image_block": false,
+        "format_block_content": false,
+        "merge_layout_blocks": true,
+        "markdown_ignore_labels": [
+            "number",
+            "footnote",
+            "header",
+            "header_image",
+            "footer",
+            "footer_image",
+            "aside_text"
+        ],
+        "return_layout_polygon_points": true
+    },
+    "parsing_res_list": [
+        {
+            "block_label": "ocr",
+            "block_content": "Tax Invoice/Bill of Supply/ Memo\n(Original for Recipient)\n\nSold By: Billing Address:\nGo Tech Sales Pvt. Ltd.\n* Unit # 2-A Suite - 208, Busa Industrial Estate,\nNear Century Bazar, Worti\nMUMBAI, MAHARASHTRA, 400025\nIN\n\n12/1/1/1, Gadadhar Mistry 2nd Bye Lane, Street-\n360, New Town\nHOWRAH, WEST BENGAL, 711104\nIN\n\nGST Registration No: 19ABNFA0631P1Z2\nPAN No: AAGCG8614F\nState/UT Code: 19\nGST Registration No: 27AAGCG8614F1ZK\n\nShipping Address:\nAPPSBEE TECHNOLOGIES\nKaustav Sarkar\n12/1/1/1, Gadadhar Mistry 2nd Bye Lane, Street-\n360, New Town\nHOWRAH, WEST BENGAL, 711104\nIN\n\nState/UT Code: 19\nGST Registration No: 19ABNFA0631P1Z2\nPlace of supply: WEST BENGAL\nOrder Number: 407-7867100-1421942\nInvoice Number: IN-18737\nOrder Date: 07.12.2020\nInvoice Details: MH-413442575-2021\nInvoice Date: 07.12.2020\n\nDescription\n1\nAaniosi for Polar Heart Rate Sensor/Monitor/ Fitness Tracker\nChest Block Hard Causes Fts. H7/H10/Wearlink (Black)\nB074M6NRPJ (NTB074M6NRPJ)\nShipping Charges\nTOTAL:\nAmount in Words:\nThree Thousand Four Hundred Thirty-three only\n\nQty\nNet\nAmount\nTax\nTax\nTax\nTax\nTax\nAmount\nAmount\nTotal\n\n1\n12,824.58\n12,824.58\n18%\nIGST\n1508.42\n13,333.00\n184.75\n18%\nIGST\n15.25\n100.00\n121.67\n14.11.00\n\nFor Go Tech Sales Pvt. Ltd.:\nAuthorized Signatory\n\nWhether tax is payable under reverse charge - No",
+            "block_bbox": [
+                0,
+                0,
+                640,
+                640
+            ],
+            "block_id": 0,
+            "block_order": 1,
+            "group_id": 0
+        }
+    ],
+    "doc_preprocessor_res": {
+        "input_path": null,
+        "page_index": null,
+        "model_settings": {
+            "use_doc_orientation_classify": true,
+            "use_doc_unwarping": true
+        },
+        "angle": 0
+    }
+}

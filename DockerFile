@@ -1,0 +1,13 @@
+# 1. Use an official runtime as a parent image
+FROM python:3.11-slim
+
+
+# 3. Install dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# 4. Copy the rest of the application
+COPY . .
+
+# 5. Run the application
+CMD ["python3", "./src/main.py"]

@@ -2,9 +2,9 @@ from pathlib import Path
 from paddleocr import PaddleOCRVL
 
 
-def run_paddle_ocr(source,output_dir_path="./output"):
-    output_dir = Path("./output")
-    output_dir.mkdir(parents=True, exist_ok=True)
+def run_paddleocr(source):
+    # output_dir = Path("./output")
+    # output_dir.mkdir(parents=True, exist_ok=True)
 
     # NVIDIA GPU
     # pipeline = PaddleOCRVL()
@@ -29,11 +29,11 @@ def run_paddle_ocr(source,output_dir_path="./output"):
         use_doc_unwarping=True,
         use_layout_detection=False
     )
-    
+
     output = pipeline.predict(source)
     for res in output:
-        res.print() ## Print the structured prediction output
-        # res.save_to_json(save_path=output_dir) ## Save the current image's structured result in JSON format
-        res.save_to_markdown(save_path=output_dir) ## Save the current image's result in Markdown format
+        # res.print() ## Print the structured prediction output
+        res.save_to_json(save_path='output/paddle.json') ## Save the current image's structured result in JSON format
+        # res.save_to_markdown(save_path=output_dir) ## Save the current image's result in Markdown format
         # res.save_to_word(save_path="output") ## Save the current image's result in Word format
     return output
