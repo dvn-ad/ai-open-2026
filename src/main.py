@@ -2,11 +2,17 @@ from module.paddle_module import run_paddleocr
 from module.docling_module import run_docling
 from module.ollama_module import run_ollama
 import time
+import os
 
 
 def main():
     source = "./images/4.png"
+
+    path = "output"
+    if not os.path.exists(path):
+        os.makedirs(path)
     
+
 
     # 1. Docling
     start_time = time.time()
