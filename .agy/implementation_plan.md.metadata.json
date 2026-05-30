@@ -1,0 +1,6 @@
+{
+  "artifactType": "ARTIFACT_TYPE_IMPLEMENTATION_PLAN",
+  "summary": "This implementation plan details the architecture and step-by-step implementation for a robust CEISA document scanning and restructuring pipeline. It features an image preprocessing module (handling deskewing, rotation, and unwarping using OpenCV and PaddleOCR), a structural OCR extraction module using Docling to capture dense multi-column layouts and tables, and a semantic restructuring module using LLMs (Ollama/OpenAI) with enforced JSON schemas to produce output conforming to standard CEISA forms.",
+  "updatedAt": "2026-05-30T05:11:52.472989856Z",
+  "requestFeedback": true
+}

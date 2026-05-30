@@ -1,0 +1,5 @@
+{
+  "artifactType": "ARTIFACT_TYPE_WALKTHROUGH",
+  "summary": "Created the final walkthrough (walkthrough.md) documenting the completed CEISA OCR & Restructuring Pipeline. Includes architectural summaries, step-by-step processing walkthrough, code linkages, and the highly accurate local LLM JSON extraction results.",
+  "updatedAt": "2026-05-30T05:19:03.155398642Z"
+}

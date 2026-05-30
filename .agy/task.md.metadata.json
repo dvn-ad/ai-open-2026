@@ -1,0 +1,5 @@
+{
+  "artifactType": "ARTIFACT_TYPE_TASK",
+  "summary": "This task tracking document lists all development items to execute the CEISA OCR pipeline implementation plan. It tracks the status of preprocessing, OCR refactoring, Ollama/OpenAI schema integration, main orchestration, and pipeline verification.",
+  "updatedAt": "2026-05-30T05:12:34.916687657Z"
+}

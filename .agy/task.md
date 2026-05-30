@@ -1,0 +1,23 @@
+# Task List: CEISA OCR & Restructuring Pipeline POC
+
+- `[x]` Implement Preprocessing Module (`src/module/preprocessing.py`)
+  - `[x]` PDF to high-resolution page images conversion using `pypdfium2`
+  - `[x]` OpenCV-based deskewing (fine tilt estimation and rotation)
+  - `[x]` Orientation detection and rotation correction (90/180/270 degrees)
+  - `[x]` Image enhancement and denoising (adaptive binarization)
+- `[x]` Refactor and Fix Docling Module (`src/module/docling_module.py`)
+  - `[x]` Fix the `inputs = InputFormat` NameError
+  - `[x]` Allow loading PIL images or preprocessed documents cleanly
+- `[x]` Enhance Ollama Extraction Module (`src/module/ollama_module.py`)
+  - `[x]` Define a standard CEISA PIB (Pemberitahuan Impor Barang) JSON Schema
+  - `[x]` Update prompts and format schema constraints
+- `[x]` Create OpenAI Fallback Module (`src/module/openai_module.py`)
+  - `[x]` Implement structured JSON output extraction using the OpenAI SDK
+- `[x]` Integrate Pipeline in Main Orchestrator (`src/main.py`)
+  - `[x]` Orchestrate preprocessing -> Docling OCR -> LLM structuring
+  - `[x]` Add comprehensive intermediate file saving for audit logging
+- `[x]` Verify and Test Pipeline
+  - `[x]` Test deskewing and rotation on sample images in `dataset/`
+  - `[x]` Run end-to-end extraction on sample PIB draft PDF
+  - `[x]` Verify correctness of final structured JSON output
+- `[x]` Write Final Walkthrough (`walkthrough.md`)
