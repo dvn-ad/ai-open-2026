@@ -40,7 +40,7 @@ def main():
     llm_engine = "ollama" 
     
     # LLM Model choices
-    ollama_model = "gemma3:4b"  # Can also be "qwen2.5:14b", "llama3", etc.
+    ollama_model = "gemma3:270m"  # Can also be "qwen2.5:14b", "llama3", etc. gemma3:4b gemma3:1b
     openai_model = "gpt-4o-mini"
     
     # --- PIPELINE START ---

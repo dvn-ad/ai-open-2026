@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CEISA Customs OCR & Restructuring Pipeline POC</title>
+    
+    <!-- Modern Typography from Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- Custom Style Sheet -->
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar - Configuration & Upload -->
+        <aside class="sidebar">
+            <div class="brand">
+                <div class="brand-logo">
+                    <i data-lucide="scan-line"></i>
+                </div>
+                <div>
+                    <h1>CEISA Customs OCR</h1>
+                    <span class="sub-brand">Restructuring Pipeline POC</span>
+                </div>
+            </div>
+            
+            <div class="sidebar-scroll">
+                <!-- Step 1: Upload / Demo selection -->
+                <section class="sidebar-section">
+                    <div class="section-header">
+                        <span class="section-step">1</span>
+                        <h2>Select Document</h2>
+                    </div>
+                    
+                    <div class="input-tabs">
+                        <button class="tab-btn active" id="input-upload-tab">Upload File</button>
+                        <button class="tab-btn" id="input-demo-tab">Demo Files</button>
+                    </div>
+                    
+                    <!-- Upload Dropzone -->
+                    <div class="upload-area" id="upload-zone">
+                        <input type="file" id="file-input" accept=".pdf,.png,.jpg,.jpeg,.tiff,.bmp" style="display: none;">
+                        <i data-lucide="cloud-upload" class="upload-icon"></i>
+                        <p class="upload-title">Drag & drop files here</p>
+                        <p class="upload-subtitle">PDF, PNG, JPG, JPEG, BMP (Max 50MB)</p>
+                        <button class="select-file-btn" onclick="document.getElementById('file-input').click()">Browse Files</button>
+                    </div>
+                    
+                    <!-- Demo files grid -->
+                    <div class="demo-area" id="demo-zone" style="display: none;">
+                        <p class="demo-instruction">Select one of the sample custom documents:</p>
+                        <div class="demo-list" id="demo-list">
+                            <div class="loading-spinner-small"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="selected-file-card" id="selected-file-card" style="display: none;">
+                        <i data-lucide="file-text" class="file-card-icon"></i>
+                        <div class="file-card-details">
+                            <span class="file-card-name" id="selected-file-name">invoice_pib.pdf</span>
+                            <span class="file-card-size" id="selected-file-size">145 KB</span>
+                        </div>
+                        <button class="file-card-remove" id="remove-file-btn">
+                            <i data-lucide="x"></i>
+                        </button>
+                    </div>
+                </section>
+                
+                <!-- Step 2: Configuration Options -->
+                <section class="sidebar-section">
+                    <div class="section-header">
+                        <span class="section-step">2</span>
+                        <h2>Pipeline Settings</h2>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Semantic LLM Engine</label>
+                        <div class="engine-selector">
+                            <label class="engine-option active">
+                                <input type="radio" name="llm_engine" value="ollama" checked>
+                                <span class="engine-card">
+                                    <i data-lucide="cpu"></i>
+                                    <span>Ollama</span>
+                                </span>
+                            </label>
+                            <label class="engine-option">
+                                <input type="radio" name="llm_engine" value="openai">
+                                <span class="engine-card">
+                                    <i data-lucide="sparkles"></i>
+                                    <span>OpenAI</span>
+                                </span>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <!-- Ollama Config -->
+                    <div class="engine-config-panel" id="ollama-config-panel">
+                        <div class="form-group">
+                            <label for="ollama-model-select">Local LLM Model</label>
+                            <div class="select-wrapper">
+                                <select id="ollama-model-select">
+                                    <!-- Populated dynamically -->
+                                </select>
+                                <i data-lucide="chevron-down" class="select-chevron"></i>
+                            </div>
+                            <span class="field-hint">Models are served via your local Ollama instance.</span>
+                        </div>
+                    </div>
+                    
+                    <!-- OpenAI Config -->
+                    <div class="engine-config-panel" id="openai-config-panel" style="display: none;">
+                        <div class="form-group">
+                            <label for="openai-model-select">OpenAI Model</label>
+                            <div class="select-wrapper">
+                                <select id="openai-model-select">
+                                    <option value="gpt-4o-mini" selected>gpt-4o-mini (Fast & Cost-Efficient)</option>
+                                    <option value="gpt-4o">gpt-4o (High-Fidelity Extraction)</option>
+                                    <option value="o1-mini">o1-mini (Complex Reasoning)</option>
+                                </select>
+                                <i data-lucide="chevron-down" class="select-chevron"></i>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="openai-api-key">API Key <span class="optional-badge">Optional</span></label>
+                            <div class="password-wrapper">
+                                <input type="password" id="openai-api-key" placeholder="sk-proj-...">
+                                <button type="button" class="toggle-password" id="toggle-key-visibility">
+                                    <i data-lucide="eye"></i>
+                                </button>
+                            </div>
+                            <span class="field-hint">If left blank, server-side environment variables will be used.</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Preprocessing config -->
+                    <div class="form-group toggle-group">
+                        <div class="toggle-info">
+                            <label class="toggle-label" for="paddle-orient-toggle">PaddleOCR Orientation Correction</label>
+                            <span class="field-hint">Autodetect and correct rotated pages (90/180/270 degrees).</span>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="paddle-orient-toggle" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </section>
+                
+                <!-- Step 3: Action -->
+                <div class="sidebar-actions">
+                    <button class="run-pipeline-btn" id="run-pipeline-btn" disabled>
+                        <i data-lucide="play"></i>
+                        <span>Execute Pipeline</span>
+                    </button>
+                </div>
+            </div>
+        </aside>
+        
+        <!-- Main Content Area - Results & Pipeline Stages -->
+        <main class="main-content">
+            <!-- Welcome State (Displayed before running pipeline) -->
+            <div class="state-container" id="welcome-state">
+                <div class="welcome-box">
+                    <div class="welcome-icon-stack">
+                        <i data-lucide="file-search" class="welcome-icon-primary"></i>
+                        <i data-lucide="settings" class="welcome-icon-gear animate-spin-slow"></i>
+                    </div>
+                    <h2>CEISA Customs OCR & Restructuring</h2>
+                    <p class="welcome-text">
+                        Preprocess scanned customs documents, perform layout-aware OCR (Docling), and structure the extracted text into the official CEISA Pemberitahuan Impor Barang (PIB) JSON schema using semantic LLM mapping.
+                    </p>
+                    
+                    <div class="features-grid">
+                        <div class="feature-card">
+                            <i data-lucide="rotate-cw"></i>
+                            <h3>Preprocessing</h3>
+                            <p>Autodeskew and rotate scanned pages using OpenCV and PaddleOCR classifiers.</p>
+                        </div>
+                        <div class="feature-card">
+                            <i data-lucide="layout"></i>
+                            <h3>Layout parsing</h3>
+                            <p>Docling layout OCR preserves document headings, tables, and paragraphs cleanly.</p>
+                        </div>
+                        <div class="feature-card">
+                            <i data-lucide="file-json-2"></i>
+                            <h3>CEISA PIB Mapping</h3>
+                            <p>Strict schema alignment for importer info, currency, financial totals, and item details.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="get-started-box">
+                        <p>Upload a file or choose a <strong>Demo File</strong> in the left sidebar to get started.</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Loading/Processing State -->
+            <div class="state-container" id="processing-state" style="display: none;">
+                <div class="loading-box">
+                    <div class="loading-stages">
+                        <!-- Stage 1: Preprocess -->
+                        <div class="loading-stage active" id="stage-preprocess">
+                            <div class="stage-status">
+                                <div class="stage-dot"></div>
+                                <div class="stage-line"></div>
+                            </div>
+                            <div class="stage-content">
+                                <h3>Step 1: Preprocessing Page Scans</h3>
+                                <p>Deskewing, binarizing, and verifying page orientation...</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Stage 2: OCR -->
+                        <div class="loading-stage" id="stage-ocr">
+                            <div class="stage-status">
+                                <div class="stage-dot"></div>
+                                <div class="stage-line"></div>
+                            </div>
+                            <div class="stage-content">
+                                <h3>Step 2: Docling Layout Extraction & OCR</h3>
+                                <p>Extracting paragraphs, boundary boxes, and complex document tables...</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Stage 3: LLM Restructure -->
+                        <div class="loading-stage" id="stage-restructure">
+                            <div class="stage-status">
+                                <div class="stage-dot"></div>
+                            </div>
+                            <div class="stage-content">
+                                <h3>Step 3: Semantic CEISA Restructuring</h3>
+                                <p>Running LLM mapping to match the strict CEISA PIB JSON schema...</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="pipeline-loader">
+                        <div class="loader-track">
+                            <div class="loader-fill" id="loader-progress-bar"></div>
+                        </div>
+                        <div class="loader-status">
+                            <span id="loader-percentage">Preprocessing in progress...</span>
+                            <span id="loader-timer">0.0s</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Results State (Displayed after running pipeline successfully) -->
+            <div class="state-container" id="results-state" style="display: none;">
+                <div class="results-header">
+                    <div class="results-title-bar">
+                        <h2>Pipeline Analysis Results</h2>
+                        <div class="results-badges">
+                            <span class="badge" id="badge-doc-type">PDF</span>
+                            <span class="badge" id="badge-scanned-type">SCANNED</span>
+                        </div>
+                    </div>
+                    
+                    <div class="results-tabs">
+                        <button class="result-tab active" data-tab="tab-visual-flow">
+                            <i data-lucide="workflow"></i>
+                            Visual Flow & Audits
+                        </button>
+                        <button class="result-tab" data-tab="tab-restructured-json">
+                            <i data-lucide="file-json"></i>
+                            Restructured CEISA JSON
+                        </button>
+                        <button class="result-tab" data-tab="tab-raw-markdown">
+                            <i data-lucide="file-text"></i>
+                            Raw Layout Markdown
+                        </button>
+                        <button class="result-tab" data-tab="tab-timing-stats">
+                            <i data-lucide="clock"></i>
+                            Execution Metrics
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="results-content-box">
+                    <!-- Tab 1: Visual Flow & Preprocessed Images -->
+                    <div class="result-tab-content active" id="tab-visual-flow">
+                        <div class="pipeline-flow-cards">
+                            <div class="flow-card">
+                                <div class="flow-card-icon preprocessing-bg">
+                                    <i data-lucide="image"></i>
+                                </div>
+                                <div class="flow-card-body">
+                                    <h3>Image Preprocessing</h3>
+                                    <p id="preprocess-summary">Deskewed and oriented image pages.</p>
+                                </div>
+                            </div>
+                            <div class="flow-arrow"><i data-lucide="chevron-right"></i></div>
+                            <div class="flow-card">
+                                <div class="flow-card-icon docling-bg">
+                                    <i data-lucide="layout-grid"></i>
+                                </div>
+                                <div class="flow-card-body">
+                                    <h3>Layout Parse & OCR</h3>
+                                    <p id="ocr-summary">Parsed tables and texts via Docling converter.</p>
+                                </div>
+                            </div>
+                            <div class="flow-arrow"><i data-lucide="chevron-right"></i></div>
+                            <div class="flow-card">
+                                <div class="flow-card-icon llm-bg">
+                                    <i data-lucide="brain"></i>
+                                </div>
+                                <div class="flow-card-body">
+                                    <h3>Semantic Mapping</h3>
+                                    <p id="llm-summary">Structured into target CEISA schemas.</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="audit-section">
+                            <h3>Preprocessed Page Audits</h3>
+                            <p class="section-description">These images represent the outputs of the deskew, orientation, and adaptive thresholding algorithms used to maximize OCR reading accuracy.</p>
+                            
+                            <div class="audit-gallery" id="audit-gallery">
+                                <!-- Populated dynamically -->
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Tab 2: Restructured CEISA JSON -->
+                    <div class="result-tab-content" id="tab-restructured-json">
+                        <div class="code-panel-header">
+                            <span>restructured_ceisa.json</span>
+                            <div class="panel-actions">
+                                <button class="action-btn" id="copy-json-btn">
+                                    <i data-lucide="copy"></i>
+                                    Copy
+                                </button>
+                                <button class="action-btn" id="download-json-btn">
+                                    <i data-lucide="download"></i>
+                                    Download
+                                </button>
+                            </div>
+                        </div>
+                        <div class="code-editor-container">
+                            <pre><code class="language-json" id="restructured-json-code"></code></pre>
+                        </div>
+                    </div>
+                    
+                    <!-- Tab 3: Raw Layout Markdown -->
+                    <div class="result-tab-content" id="tab-raw-markdown">
+                        <div class="code-panel-header">
+                            <span>raw_layout.md (Docling Output)</span>
+                            <div class="panel-actions">
+                                <button class="action-btn" id="copy-md-btn">
+                                    <i data-lucide="copy"></i>
+                                    Copy
+                                </button>
+                            </div>
+                        </div>
+                        <div class="code-editor-container">
+                            <pre><code class="language-markdown" id="raw-markdown-code"></code></pre>
+                        </div>
+                    </div>
+                    
+                    <!-- Tab 4: Execution Metrics -->
+                    <div class="result-tab-content" id="tab-timing-stats">
+                        <div class="metrics-grid">
+                            <div class="metric-card main-metric">
+                                <span class="metric-label">Total Pipeline Duration</span>
+                                <span class="metric-value" id="metric-total-time">12.4s</span>
+                                <span class="metric-sub">From ingestion to schema-compliant JSON</span>
+                            </div>
+                            
+                            <div class="metric-breakdown-card">
+                                <h3>Execution Breakdown</h3>
+                                <div class="timing-bars-container">
+                                    <!-- Preprocess Bar -->
+                                    <div class="timing-bar-item">
+                                        <div class="timing-bar-label">
+                                            <span>1. Image Ingestion & Preprocessing</span>
+                                            <strong id="timing-preprocess-val">2.3s</strong>
+                                        </div>
+                                        <div class="timing-bar-track">
+                                            <div class="timing-bar-fill preprocessing-bg" id="timing-preprocess-fill" style="width: 20%;"></div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Docling Bar -->
+                                    <div class="timing-bar-item">
+                                        <div class="timing-bar-label">
+                                            <span>2. OCR & Layout Parsing (Docling)</span>
+                                            <strong id="timing-docling-val">6.1s</strong>
+                                        </div>
+                                        <div class="timing-bar-track">
+                                            <div class="timing-bar-fill docling-bg" id="timing-docling-fill" style="width: 50%;"></div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- LLM Bar -->
+                                    <div class="timing-bar-item">
+                                        <div class="timing-bar-label">
+                                            <span>3. Schema Restructuring (LLM)</span>
+                                            <strong id="timing-llm-val">4.0s</strong>
+                                        </div>
+                                        <div class="timing-bar-track">
+                                            <div class="timing-bar-fill llm-bg" id="timing-llm-fill" style="width: 30%;"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="environment-details">
+                            <h3>Pipeline Architectural Highlights</h3>
+                            <div class="env-features">
+                                <div class="env-feature">
+                                    <i data-lucide="shield-check"></i>
+                                    <div>
+                                        <h4>High-Fidelity Tables</h4>
+                                        <p>Docling parses complex grid structures, maintaining parent-child relations for customs tax matrices.</p>
+                                    </div>
+                                </div>
+                                <div class="env-feature">
+                                    <i data-lucide="check-circle-2"></i>
+                                    <div>
+                                        <h4>Deterministic Binders</h4>
+                                        <p>FastAPI acts as the orchestration link, organizing outputs cleanly by UUID-keyed folders to ensure sandboxed operations.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <!-- Image Zoom Modal -->
+    <div class="modal" id="image-modal">
+        <span class="modal-close" id="modal-close">&times;</span>
+        <img class="modal-content" id="modal-img">
+        <div id="modal-caption">Preprocessed Audit Image Page</div>
+    </div>
+    
+    <!-- Toast Notifications Container -->
+    <div class="toast-container" id="toast-container"></div>
+    
+    <!-- Custom Scripts -->
+    <script src="js/main.js"></script>
+</body>
+</html>
