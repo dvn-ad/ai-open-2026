@@ -91,10 +91,16 @@ Navigate to **http://localhost:8000/docs** in your browser to interact with the 
 ---
 
 ## 🐳 Docker Setup
+
+You can containerize and run the platform using Docker:
+
 ```bash
-# Build the image
+# 1. Build the Docker image
 docker build -t customs-ai .
 
-# Run the image
-docker run -it customs-ai
+# 2. Run the FastAPI validation server (exposed on port 8000)
+docker run -p 8000:8000 customs-ai
+
+# 3. (Optional) Run the end-to-end pipeline script directly inside the container
+docker run -it customs-ai python src/main.py
 ```
