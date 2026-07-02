@@ -86,9 +86,11 @@ opencv-python==4.13.0.92
 openpyxl==3.1.5
 opt-einsum==3.3.0
 packaging==26.2
-paddleocr==3.5.0
-paddlepaddle==3.2.1
-paddlex==3.5.2
+# The following paddle packages are commented out because they do not support Python 3.14.
+# The application code handles their absence gracefully with fallback options.
+# paddleocr==3.5.0
+# paddlepaddle==3.2.1
+# paddlex==3.5.2
 pandas==3.0.3
 pillow==12.2.0
 pluggy==1.6.0

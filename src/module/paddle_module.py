@@ -1,5 +1,8 @@
 from pathlib import Path
-from paddleocr import PaddleOCRVL
+try:
+    from paddleocr import PaddleOCRVL
+except ImportError:
+    PaddleOCRVL = None
 
 
 def run_paddleocr(source):
