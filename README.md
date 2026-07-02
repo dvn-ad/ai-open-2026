@@ -19,8 +19,23 @@ Complete project documentation lives outside this repo, at `../../docs/`. Read i
 If you clone only this code repository, you will not have the docs. Please clone the parent folder `AI Open Hackathon/` to get both together.
 
 ---
+## Docker Setup (Recommended)
 
-## 🚀 Getting Started
+You can containerize and run the platform using Docker:
+
+```bash
+# 1. Build the Docker image
+docker build -t customs-ai .
+
+# 2. (Optional) Run the FastAPI validation server (exposed on port 8000)
+docker run -p 8000:8000 customs-ai
+
+# 3. Run the end-to-end pipeline script directly inside the container
+docker run -it customs-ai python src/main.py
+docker run -it customs-ai python src/[file]
+```
+
+## Manual Setup
 
 ### 1. Prerequisites & Installation
 Make sure you have Python 3.11+ installed.
@@ -45,7 +60,7 @@ python src/validation/train_model.py
 
 ---
 
-## 🏃‍♂️ How to Run the End-to-End Pipeline
+## How to Run the End-to-End Pipeline
 
 To process an image (`./images/4.png`), run Docling, PaddleOCR, Ollama, and finally validate it through the Intelligence Layer:
 
@@ -80,7 +95,7 @@ At the end of the script execution, you will see a structured Validation JSON ou
 
 ---
 
-## 🌐 Running the FastAPI Server (Optional)
+## Running the FastAPI Server (Optional)
 If you are building a frontend dashboard, you can spin up the Validation Engine as a REST API:
 
 ```bash
@@ -90,17 +105,3 @@ Navigate to **http://localhost:8000/docs** in your browser to interact with the 
 
 ---
 
-## 🐳 Docker Setup
-
-You can containerize and run the platform using Docker:
-
-```bash
-# 1. Build the Docker image
-docker build -t customs-ai .
-
-# 2. Run the FastAPI validation server (exposed on port 8000)
-docker run -p 8000:8000 customs-ai
-
-# 3. (Optional) Run the end-to-end pipeline script directly inside the container
-docker run -it customs-ai python src/main.py
-```
