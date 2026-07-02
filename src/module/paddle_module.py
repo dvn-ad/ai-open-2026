@@ -1,5 +1,8 @@
 from pathlib import Path
-from paddleocr import PaddleOCRVL
+try:
+    from paddleocr import PaddleOCRVL
+except ImportError:
+    PaddleOCRVL = None
 
 
 def run_paddleocr(source):
@@ -23,8 +26,11 @@ def run_paddleocr(source):
     # pipeline = PaddleOCRVL(use_doc_unwarping=True) # Use use_doc_unwarping to enable/disable document unwarping module
     # pipeline = PaddleOCRVL(use_layout_detection=False) # Use use_layout_detection to enable/disable layout analysis module
 
+    if PaddleOCRVL is None:
+        raise ImportError("PaddleOCRVL is not installed or available.")
+
     pipeline = PaddleOCRVL(
-        device="cpu",
+        device="gpu",
         use_doc_orientation_classify=True,
         use_doc_unwarping=True,
         use_layout_detection=False

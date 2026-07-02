@@ -22,6 +22,8 @@ def train_and_save():
         objective='multi:softprob',
         num_class=3,
         eval_metric='mlogloss',
+        tree_method='hist',
+        device='cuda',
         random_state=42
     )
     

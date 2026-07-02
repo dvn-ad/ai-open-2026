@@ -21,42 +21,41 @@ If you clone only this code repository, you will not have the docs. Please clone
 ---
 ## Docker Setup (Recommended)
 
-You can containerize and run the platform using Docker:
+You can containerize and run the platform using Docker with GPU support:
 
 ```bash
-# 1. Build the Docker image
+# 1. Build the GPU-enabled Docker image
 docker build -t customs-ai .
 
-# 2. (Optional) Run the FastAPI validation server (exposed on port 8000)
-docker run -p 8000:8000 customs-ai
+# 2. (Optional) Run the FastAPI validation server (exposed on port 8000) utilizing host GPU
+docker run --gpus all -p 8000:8000 customs-ai
 
-# 3. Run the end-to-end pipeline script directly inside the container
-docker run -it customs-ai python src/main.py
-docker run -it customs-ai python src/[file]
+# 3. Run the end-to-end pipeline script directly inside the container utilizing host GPU
+docker run --gpus all -it customs-ai python3 src/main.py
 ```
 
 ## Manual Setup
 
 ### 1. Prerequisites & Installation
-Make sure you have Python 3.11+ installed.
+Make sure you have Python 3.11+ and NVIDIA CUDA Toolkit installed on your host machine to run on GPU.
 
 ```bash
-# Create and activate a virtual environment (Windows)
-python -m venv .venv
-.venv\Scripts\activate
+# Create and activate a virtual environment (Linux)
+python3 -m venv .venv
+source .venv/bin/activate
 
-# Install all required dependencies
+# Install all required dependencies (including GPU-enabled PaddlePaddle and PyTorch)
 pip install -r requirements.txt
 ```
 
 ### 2. Generating Data & Training the ML Model
-Before running the main application, you need to generate the synthetic customs dataset and train the XGBoost risk model.
+Before running the main application, you can generate the synthetic customs dataset and train the XGBoost risk model using GPU:
 
 ```bash
 # Generate synthetic customs records & train the XGBoost model
-python src/validation/train_model.py
+python3 src/validation/train_model.py
 ```
-*(If `synthetic_customs_data.csv` is missing, you may need to run `python src/validation/synthetic_data.py` first).*
+*(If `synthetic_customs_data.csv` is missing, you may need to run `python3 src/validation/synthetic_data.py` first).*
 
 ---
 
