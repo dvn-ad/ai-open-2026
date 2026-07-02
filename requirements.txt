@@ -10,3 +10,6 @@ docling
 ollama
 paddleocr
 paddlepaddle
+transformers
+torch
+timm
