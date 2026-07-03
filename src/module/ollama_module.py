@@ -85,6 +85,42 @@ def run_ollama(source, layout_results=None, table_results=None):
         "    \"consignee_name\": \"string or null\",\n"
         "    \"total_gross_weight\": float or null\n"
         "  },\n"
+        "  \"pib\": {\n"
+        "    \"document_type\": \"PIB\",\n"
+        "    \"pib_number\": \"string or null\",\n"
+        "    \"invoice_number\": \"string or null\",\n"
+        "    \"bl_number\": \"string or null\",\n"
+        "    \"importer_name\": \"string or null\",\n"
+        "    \"importer_tax_id\": \"string or null\",\n"
+        "    \"total_gross_weight\": float or null,\n"
+        "    \"total_net_weight\": float or null,\n"
+        "    \"items\": [\n"
+        "      {\n"
+        "        \"description\": \"string\",\n"
+        "        \"quantity\": float,\n"
+        "        \"hs_code\": \"string or null\",\n"
+        "        \"unit_price\": float or null,\n"
+        "        \"total_price\": float or null\n"
+        "      }\n"
+        "    ]\n"
+        "  },\n"
+        "  \"form_e\": {\n"
+        "    \"document_type\": \"Form E Certificate of Origin\",\n"
+        "    \"reference_number\": \"string or null\",\n"
+        "    \"invoice_number\": \"string or null\",\n"
+        "    \"vessel_name\": \"string or null\",\n"
+        "    \"departure_date\": \"string or null\",\n"
+        "    \"total_gross_weight\": float or null,\n"
+        "    \"items\": [\n"
+        "      {\n"
+        "        \"description\": \"string\",\n"
+        "        \"quantity\": float,\n"
+        "        \"hs_code\": \"string or null\",\n"
+        "        \"unit_price\": float or null,\n"
+        "        \"total_price\": float or null\n"
+        "      }\n"
+        "    ]\n"
+        "  },\n"
         "  \"import_permits\": [\"string\"]\n"
         "}\n\n"
         "Rules:\n"
@@ -92,14 +128,6 @@ def run_ollama(source, layout_results=None, table_results=None):
         "2. Do not hallucinate fields. Only extract what is present in the image and structured context.\n"
         "3. Output valid raw JSON conforming strictly to this format.\n"
     )
-
-    messages = [
-        {
-            "role": "user",
-            "content": prompt,
-            "images": [source]
-        }
-    ]
 
     # Find available model or use qwen2.5vl as default
     model_name = "qwen3.5:9b"
@@ -116,7 +144,6 @@ def run_ollama(source, layout_results=None, table_results=None):
                 available_models.append(name)
                 
         if available_models:
-            # If qwen2.5vl is not in available models, but qwen3.5:9b is, use qwen3.5:9b
             if model_name not in available_models and "qwen3.5:9b" in available_models:
                 model_name = "qwen3.5:9b"
             elif model_name not in available_models:
@@ -125,8 +152,23 @@ def run_ollama(source, layout_results=None, table_results=None):
     except Exception as e:
         logger.warning(f"Failed to query available Ollama models: {e}. Defaulting to '{model_name}'.")
 
+    # Check if the model supports vision
+    is_vision_model = any(v in model_name.lower() for v in ["vl", "vision", "llava", "minicpm"])
+    
+    message_content = {
+        "role": "user",
+        "content": prompt
+    }
+    if is_vision_model:
+        message_content["images"] = [source]
+        logger.info(f"Vision model detected. Passing image to Ollama.")
+    else:
+        logger.info(f"Text model detected. Querying Ollama without image parameter.")
+        
+    messages = [message_content]
+
     try:
-        logger.info(f"Querying Ollama ({model_name}) with vision + structured prompt...")
+        logger.info(f"Querying Ollama ({model_name}) with structured prompt...")
         response = chat(
             model=model_name,
             messages=messages,

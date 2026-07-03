@@ -7,9 +7,22 @@ import re
 from uuid import uuid4
 import logging
 
-from .schema import ExtractedDocuments
+from .schema import ExtractedDocuments, CommercialInvoice, PackingList, BillOfLading, PIBDocument, FormEDocument, DocumentItem
 from .confidence_engine import ConfidenceEngine
 from src.module.hs_code_predictor import predict_hs_code
+
+import os
+import shutil
+import time
+import json
+import pypdfium2 as pdfium
+from pathlib import Path
+
+from src.module.docling_module import run_docling
+from src.module.paddle_module import run_paddleocr
+from src.module.layoutlm_module import run_layoutlm
+from src.module.table_transformer_module import run_table_transformer
+from src.module.ollama_module import run_ollama
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -167,6 +180,39 @@ async def validate_declaration(docs: ExtractedDocuments):
         logger.error(f"Validation failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+def populate_confidence_scores(doc_obj, ocr_results):
+    if not doc_obj:
+        return
+    
+    # Calculate average OCR confidence for the entire page
+    page_ocr_scores = [t.get("confidence", 1.0) * 100 for t in ocr_results if "confidence" in t]
+    avg_page_confidence = sum(page_ocr_scores) / len(page_ocr_scores) if page_ocr_scores else 95.0
+    
+    scores = {}
+    
+    for field in doc_obj.model_fields.keys():
+        if field in ["document_type", "items", "confidence_scores"]:
+            continue
+        val = getattr(doc_obj, field, None)
+        if val is None or val == "":
+            continue
+            
+        # Search for this value in OCR results
+        val_str = str(val).upper().strip()
+        matched_scores = []
+        for token in ocr_results:
+            token_text = str(token.get("text", "")).upper().strip()
+            if val_str in token_text or token_text in val_str:
+                matched_scores.append(token.get("confidence", 1.0) * 100)
+                
+        if matched_scores:
+            scores[field] = round(sum(matched_scores) / len(matched_scores), 2)
+        else:
+            # Fallback to average page confidence
+            scores[field] = round(min(99.0, max(50.0, avg_page_confidence)), 2)
+            
+    doc_obj.confidence_scores = scores
+
 @app.post("/api/extract")
 async def extract_documents(
     commercial_invoice: Optional[UploadFile] = File(None),
@@ -204,73 +250,216 @@ async def extract_documents(
                 }
             }
             
-        # If not cached, perform standard mock/fallback processing (in a production system, we'd run the module code)
-        # To ensure the demo never hangs on CPU, we return a fallback schema based on files uploaded
-        logger.info("Cache missed. Generating fallback structured documents.")
-        fallback_data = {
-            "commercial_invoice": {
-                "document_type": "Commercial Invoice",
-                "invoice_number": "INV-MOCK-999",
-                "importer_name": "PT. Indonesia Global Trading",
-                "importer_tax_id": "01.234.567.8-000.000",
-                "currency": "USD",
-                "total_value": 50000.0,
-                "items": [
-                    {
-                        "description": "Besi Baja Coil",
-                        "quantity": 100.0,
-                        "hs_code": "720810",
-                        "unit_price": 500.0,
-                        "total_price": 50000.0
-                    }
-                ],
-                "confidence_scores": {
-                    "invoice_number": 95.0,
-                    "importer_name": 98.0,
-                    "importer_tax_id": 99.0,
-                    "currency": 99.0,
-                    "total_value": 99.0
-                }
-            } if commercial_invoice else None,
-            "packing_list": {
-                "document_type": "Packing List",
-                "pl_number": "PL-MOCK-999",
-                "total_gross_weight": 2500.0,
-                "items": [
-                    {
-                        "description": "Besi Baja Rolled Coil",
-                        "quantity": 100.0
-                    }
-                ],
-                "confidence_scores": {
-                    "pl_number": 95.0,
-                    "total_gross_weight": 95.0
-                }
-            } if packing_list else None,
-            "bill_of_lading": {
-                "document_type": "Bill of Lading",
-                "bl_number": "BL-MOCK-999",
-                "shipper_name": "Shanghai Steel Export Corp",
-                "consignee_name": "PT. Indonesia Global Trading",
-                "total_gross_weight": 2500.0,
-                "confidence_scores": {
-                    "bl_number": 95.0,
-                    "total_gross_weight": 95.0
-                }
-            } if bill_of_lading else None,
+        # If cache miss, execute the real ML pipeline
+        logger.info("Cache missed. Processing uploaded file(s) through live ML pipeline.")
+        upload_dir = "output/uploads"
+        os.makedirs(upload_dir, exist_ok=True)
+        
+        pages_to_process = []
+        
+        for file_key, upload_file in [
+            ("commercial_invoice", commercial_invoice),
+            ("packing_list", packing_list),
+            ("bill_of_lading", bill_of_lading)
+        ]:
+            if not upload_file:
+                continue
+            
+            suffix = Path(upload_file.filename).suffix.lower()
+            temp_path = os.path.join(upload_dir, f"{uuid4().hex[:8]}_{upload_file.filename}")
+            with open(temp_path, "wb") as f_out:
+                shutil.copyfileobj(upload_file.file, f_out)
+            
+            if suffix == ".pdf":
+                pdf = pdfium.PdfDocument(temp_path)
+                for idx in range(len(pdf)):
+                    page = pdf[idx]
+                    bitmap = page.render(scale=2)
+                    pil_img = bitmap.to_pil()
+                    page_path = os.path.join(upload_dir, f"page_{idx+1}_{uuid4().hex[:8]}.png")
+                    pil_img.save(page_path)
+                    
+                    # Extract native text
+                    textpage = page.get_textpage()
+                    native_text = textpage.get_text_bounded() or ""
+                    pages_to_process.append({
+                        "image_path": page_path,
+                        "file_key": file_key,
+                        "native_text": native_text
+                    })
+            else:
+                pages_to_process.append({
+                    "image_path": temp_path,
+                    "file_key": file_key,
+                    "native_text": ""
+                })
+
+        combined_data = {
+            "commercial_invoice": None,
+            "packing_list": None,
+            "bill_of_lading": None,
+            "pib": None,
+            "form_e": None,
             "import_permits": []
         }
         
-        extracted_docs = ExtractedDocuments(**fallback_data)
+        modules_used = ["docling", "paddleocr", "layoutlmv3", "tabletransformer", "ollama"]
+        errors = []
+        start_time_all = time.time()
+        
+        for page_info in pages_to_process:
+            img_path = page_info["image_path"]
+            file_key = page_info["file_key"]
+            native_text = page_info["native_text"]
+            
+            # 1. OCR (PaddleOCR/RapidOCR)
+            try:
+                ocr_results = run_paddleocr(img_path) or []
+            except Exception as e:
+                logger.error(f"OCR failed for {img_path}: {e}")
+                errors.append(f"OCR failed for {img_path}: {str(e)}")
+                continue
+                
+            # Classify page type using text
+            ocr_text = " ".join(t.get("text", "") for t in ocr_results)
+            full_text = (native_text + " " + ocr_text).upper()
+            
+            doc_type = "other"
+            if 'PEMBERITAHUAN IMPOR' in full_text or 'BC2.0' in full_text or 'BC 2.0' in full_text:
+                doc_type = 'pib'
+            elif 'FORM E' in full_text or 'FORM_E' in full_text:
+                doc_type = 'form_e'
+            elif 'COMMERCIAL INVOICE' in full_text:
+                doc_type = 'commercial_invoice'
+            elif 'PACKING LIST' in full_text:
+                doc_type = 'packing_list'
+            elif 'BILL OF LADING' in full_text or 'WAYBILL' in full_text or 'LADING' in full_text:
+                doc_type = 'bill_of_lading'
+            else:
+                doc_type = file_key
+                
+            logger.info(f"Classified page {img_path} as document type: {doc_type}")
+            
+            if doc_type == "other":
+                logger.info(f"Skipping page {img_path} classified as Other.")
+                continue
+                
+            # 2. Docling conversion
+            try:
+                run_docling(img_path)
+            except Exception as e:
+                logger.warning(f"Docling failed for {img_path}: {e}")
+                
+            # 3. LayoutLMv3
+            try:
+                layout_results = run_layoutlm(img_path, ocr_results) or []
+            except Exception as e:
+                logger.warning(f"LayoutLMv3 failed for {img_path}: {e}")
+                layout_results = []
+                
+            # 4. TableTransformer
+            try:
+                table_results = run_table_transformer(img_path, ocr_results) or []
+            except Exception as e:
+                logger.warning(f"TableTransformer failed for {img_path}: {e}")
+                table_results = []
+                
+            # 5. Ollama vision parsing
+            try:
+                ollama_output = run_ollama(img_path, layout_results, table_results) or ""
+                if ollama_output.strip():
+                    cleaned_json = ollama_output.strip()
+                    if cleaned_json.startswith("```"):
+                        cleaned_json = cleaned_json.split("\n", 1)[1]
+                    if cleaned_json.endswith("```"):
+                        cleaned_json = cleaned_json.rsplit("\n", 1)[0]
+                    cleaned_json = cleaned_json.strip()
+                    if cleaned_json.startswith("json"):
+                        cleaned_json = cleaned_json[4:].strip()
+                        
+                    parsed_json = json.loads(cleaned_json)
+                    
+                    if isinstance(parsed_json, dict):
+                        # Merge document objects
+                        for key, model_cls in [
+                            ("commercial_invoice", CommercialInvoice),
+                            ("packing_list", PackingList),
+                            ("bill_of_lading", BillOfLading),
+                            ("pib", PIBDocument),
+                            ("form_e", FormEDocument)
+                        ]:
+                            doc_data = parsed_json.get(key)
+                            if doc_data and isinstance(doc_data, dict):
+                                try:
+                                    # Clean up document_type to prevent validation errors if LLM outputs null
+                                    if "document_type" in doc_data and doc_data["document_type"] is None:
+                                        del doc_data["document_type"]
+                                        
+                                    # Clean up items list to prevent Pydantic validation errors on None values
+                                    if "items" in doc_data and isinstance(doc_data["items"], list):
+                                        cleaned_items = []
+                                        for item in doc_data["items"]:
+                                            if isinstance(item, dict):
+                                                desc = item.get("description") or item.get("uraian") or "Unknown"
+                                                qty = item.get("quantity") or item.get("jumlah")
+                                                try:
+                                                    qty = float(qty) if qty is not None else 0.0
+                                                except Exception:
+                                                    qty = 0.0
+                                                
+                                                # Convert optional fields safely
+                                                unit_pr = None
+                                                if item.get("unit_price") is not None:
+                                                    try:
+                                                        unit_pr = float(item["unit_price"])
+                                                    except Exception:
+                                                        pass
+                                                        
+                                                tot_pr = None
+                                                if item.get("total_price") is not None:
+                                                    try:
+                                                        tot_pr = float(item["total_price"])
+                                                    except Exception:
+                                                        pass
+
+                                                cleaned_item = {
+                                                    "description": str(desc),
+                                                    "quantity": qty,
+                                                    "hs_code": str(item.get("hs_code")) if item.get("hs_code") is not None else None,
+                                                    "unit_price": unit_pr,
+                                                    "total_price": tot_pr
+                                                }
+                                                cleaned_items.append(cleaned_item)
+                                        doc_data["items"] = cleaned_items
+                                        
+                                    doc_obj = model_cls(**doc_data)
+                                    populate_confidence_scores(doc_obj, ocr_results)
+                                    combined_data[key] = doc_obj.model_dump()
+                                except Exception as p_err:
+                                    logger.error(f"Failed parsing Pydantic object {key}: {p_err}")
+                                    errors.append(f"Failed parsing Pydantic object {key}: {str(p_err)}")
+                                    
+                        # Merge permits (filter out null/None and empty values)
+                        if parsed_json.get("import_permits") and isinstance(parsed_json["import_permits"], list):
+                            cleaned_permits = [str(p) for p in parsed_json["import_permits"] if p is not None and str(p).strip() != ""]
+                            combined_data["import_permits"].extend(cleaned_permits)
+            except Exception as e:
+                logger.error(f"Ollama/parsing failed for {img_path}: {e}")
+                errors.append(f"Ollama/parsing failed for {img_path}: {str(e)}")
+                
+        # Final cleanup of permits
+        combined_data["import_permits"] = list(set(str(p) for p in combined_data["import_permits"] if p is not None and str(p).strip() != ""))
+        
+        extracted_docs = ExtractedDocuments(**combined_data)
         EXTRACTION_STORE[extraction_id] = extracted_docs
         
         return {
             "extraction_id": extraction_id,
-            "documents": fallback_data,
+            "documents": combined_data,
             "ocr_meta": {
-                "total_runtime_seconds": 1.25,
-                "modules_used": ["docling", "paddleocr", "layoutlmv3", "tabletransformer", "ollama"],
-                "errors": []
+                "total_runtime_seconds": round(time.time() - start_time_all, 2),
+                "modules_used": modules_used,
+                "errors": errors
             }
         }
     except Exception as e:

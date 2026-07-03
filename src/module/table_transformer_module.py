@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 class TableTransformerModule:
     def __init__(self, model_name="microsoft/table-transformer-structure-recognition"):
         self.model_name = model_name
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.device = "cpu"
         self.image_processor = None
         self.model = None
         self.is_loaded = False

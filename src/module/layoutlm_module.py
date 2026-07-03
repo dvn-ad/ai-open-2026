@@ -14,7 +14,7 @@ LABEL_NAMES = ['HEADER', 'FIELD_NAME', 'FIELD_VALUE', 'LINE_ITEM', 'TOTAL', 'OTH
 class LayoutLMModule:
     def __init__(self, model_name="microsoft/layoutlmv3-base"):
         self.model_name = model_name
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.device = "cpu"
         self.processor = None
         self.model = None
         self.is_loaded = False
