@@ -1,131 +1,120 @@
 # AI-Powered Customs Declaration Automation Platform
 
-This project automates the extraction and validation of Indonesian customs workflows. It combines PaddleOCR, Docling, LayoutLMv3, TableTransformer, and Ollama for extracting text from trade documents (Commercial Invoice, Packing List, Bill of Lading) and pipes it into an **Explainable ML Validation Intelligence Layer** to predict CEISA rejection risks based on Permendag rules.
+An automated AI-driven platform for extracting, validating, and submitting Indonesian customs declarations (PIB) based on international trade documents. 
 
-## Full Documentation
-
-Complete project documentation lives outside this repo, at `../../docs/`. Read in this order:
-
-1. **`../../PRD.md`** — Product Requirements Document (scope, features, success criteria)
-2. **`../../docs/README.md`** — Documentation index (start here for onboarding)
-3. **`../../docs/GLOSSARY.md`** — Acronyms, Indonesian customs terms, technical terms
-4. **`../../docs/ARCHITECTURE.md`** — Component diagram, data flow, design rationale
-5. **`../../docs/TECH_STACK.md`** — Every library with reasoning and rejected alternatives
-6. **`../../docs/USER_STORIES.md`** — Detailed user stories per epic
-7. **`../../docs/API_CONTRACT.md`** — Frontend/backend API contract
-8. **`../../docs/REFERENCES.md`** — Sources, citations, competitor analysis
-9. **`../../docs/DECISIONS.md`** — Architecture Decision Records (ADR log)
-
-If you clone only this code repository, you will not have the docs. Please clone the parent folder `AI Open Hackathon/` to get both together.
+This platform processes trade documents—**Commercial Invoice (CI)**, **Packing List (PL)**, **Bill of Lading (BL)**, **Pemberitahuan Impor Barang (PIB)**, and **Form E Certificate of Origin**—reconciles them, evaluates them against Indonesian **Permendag import rules**, runs an **Explainable Machine Learning Risk Classifier** (XGBoost + SHAP), and maps them into a simulated **CEISA 4.0 Host-to-Host submission payload**.
 
 ---
-## Docker Setup (Recommended)
 
-You can containerize and run the platform using Docker with GPU support:
+## Key Features
 
+1. **OCR & Layout Intelligence**: Integrates **Docling**, **PaddleOCR**, **LayoutLMv3**, and **TableTransformer** to parse unstructured documents, extract table grids, and classify semantic document blocks.
+2. **LLM Structuring Layer**: Maps raw text, bounding boxes, and tabular structures into structured Pydantic schemas using local LLMs via **Ollama**.
+3. **Permendag Rule Validation**: Custom rules engine to validate mandatory fields, HS Code restrictions, and required import permits (e.g., `PI_Besi_Baja`, `LS_Tekstil`).
+4. **Cross-Document Reconciliation**: Reconciles fields across PIB, Form E, Invoice, Packing List, and Bill of Lading (e.g., verifying weights, quantities, invoice numbers, and BL numbers, highlighting discrepancies).
+5. **Explainable ML Classifier**: Uses a custom-trained **XGBoost model** to predict rejections and runs **SHAP explanations** to explain the exact risk factor attribution.
+6. **CEISA 4.0 Integration**: Maps validated documents to simulated CEISA payloads and issues government clearance status (Green/Yellow/Red lanes).
+
+---
+
+## System Architecture & Process Flow
+
+A detailed flow diagram and step-by-step technical explanation of the document extraction, validation, and submission flow can be found in the [SYSTEM_FLOW.md](file:///home/mendoan/Projects/ai-open-2026/SYSTEM_FLOW.md) document.
+
+---
+
+## Input & Output Specifications
+
+### 1. Inputs
+* **API Ingestion**: Upload individual files (`commercial_invoice`, `packing_list`, `bill_of_lading`) or a **single combined PDF** (e.g., the complete dataset package containing PIB, CI, PL, BL, Form E, etc.).
+* **CLI Ingestion**: Target local image/PDF files (e.g., `images/4.png` or `dataset/UEU-Master-16519-lampiran.Image.Marked.pdf`).
+
+### 2. Outputs
+* **Data Extraction**: Conforms to the `ExtractedDocuments` schema containing structured fields and OCR confidence scores.
+* **Validation Intelligence**:
+  * **Confidence Score** (0-100%): Derived from OCR quality, cross-document consistency, compliance, and ML risk probability.
+  * **Compliance Score** (0-100%): Based on Permendag rules compliance.
+  * **Risk Level** (`Low`, `Medium`, `High`) and **ML Risk Probability**.
+  * **Warnings**: List of detailed warnings with `severity`, `rule_id`, `message`, `affected_fields`, and `suggested_fix`.
+  * **SHAP Risk Attributions**: Feature attributions explaining *why* a particular risk level was predicted.
+* **CEISA Mapping**: Simulated Host-to-Host submission response with simulated Status (`RECEIVED`), assigned PIB Number, and estimated clearance lane (`GREEN`, `YELLOW`, `RED`).
+
+---
+
+## Installation & Setup (Without Docker)
+
+Follow these steps to run the complete system locally.
+
+### Prerequisites
+* Python 3.11+
+* CUDA Toolkit (optional, for GPU acceleration)
+* [Ollama](https://ollama.com/) (installed and running)
+
+### Step 1: Install Python Dependencies
+Set up a virtual environment and install the required libraries:
 ```bash
-# 1. Build the GPU-enabled Docker image
-docker build -t customs-ai .
-
-# 2. (Optional) Run the FastAPI validation server (exposed on port 8000) utilizing host GPU
-docker run --gpus all -p 8000:8000 customs-ai
-
-# 3. Run the end-to-end pipeline script directly inside the container utilizing host GPU
-docker run --gpus all -it customs-ai python3 src/main.py
-```
-
-## Manual Setup
-
-### 1. Prerequisites & Installation
-Make sure you have Python 3.11+ and NVIDIA CUDA Toolkit installed on your host machine to run on GPU.
-
-```bash
-# Create and activate a virtual environment (Linux)
+# Create and activate virtual environment
 python3 -m venv .venv
 source .venv/bin/activate
 
-# Install all required dependencies (including GPU-enabled PaddlePaddle and PyTorch)
+# Upgrade pip and install packages
+pip install --upgrade pip
 pip install -r requirements.txt
+pip install python-multipart
 ```
 
-### 2. Generating Data & Training the ML Model
-Before running the main application, you can generate the synthetic customs dataset and train the XGBoost risk model using GPU:
-
+### Step 2: Set Up Ollama
+Start Ollama and pull the required Qwen model (uses `qwen3.5:9b` by default):
 ```bash
-# Generate synthetic customs records & train the XGBoost model
+# Pull the model
+ollama pull qwen3.5:9b
+```
+
+### Step 3: Generate Synthetic Data & Train ML Model
+Before running the main application, generate the synthetic training records and train the XGBoost risk classification model:
+```bash
+# Generate synthetic dataset
+python3 src/validation/synthetic_data.py
+
+# Train the XGBoost risk model
 python3 src/validation/train_model.py
 ```
-*(If `synthetic_customs_data.csv` is missing, you may need to run `python3 src/validation/synthetic_data.py` first).*
 
 ---
 
-## How to Run the End-to-End Pipeline
+## How to Run
 
-To process an image (`./images/4.png`), run Docling, PaddleOCR, Ollama, and finally validate it through the Intelligence Layer:
-
-```bash
-python src/main.py
-```
-
-### What happens when you run this?
-1. **Extraction**: Docling, PaddleOCR, and Ollama will scan the document in `./images/4.png` and extract the raw text.
-2. **Formatting**: The extracted text is mapped into our structured Python dictionary (`ExtractedDocuments` schema).
-3. **Rule Checking**: The Permendag Rule Engine checks if mandatory fields and required import permits (like `PI_Besi_Baja` for HS Code 72) are present.
-4. **Cross-Document Check**: Validates that Quantities and Weights match across the Invoice, Packing List, and Bill of Lading.
-5. **Risk Scoring**: The XGBoost model calculates a High/Medium/Low risk probability. The **SHAP AI Explainer** explains *exactly why* the score was given.
-
-### Expected Output Example
-At the end of the script execution, you will see a structured Validation JSON output printed to your terminal:
-```json
-{
-  "confidence_score": 54.33,
-  "risk_level": "High",
-  "compliance_score": 75.0,
-  "ml_risk_probability": 99.97,
-  "warnings": [
-    "Item Besi Baja Coil (HS: 720810): Import Permit (PI_Besi_Baja) required for Iron and Steel (HS 72). Missing: ['PI_Besi_Baja']",
-    "Weight mismatch: PL=2500.0, BL=2550.0",
-    "Total quantity mismatch: CI=100.0, PL=90.0",
-    "AI Explainer Note: Weight mismatch across documents contributed to the risk score.",
-    "AI Explainer Note: Missing required import permit contributed to the risk score."
-  ]
-}
-```
-
----
-
-## Running the Pipeline on the PDF Dataset
-
-We have integrated full support for the multi-page Indonesian customs dataset PDF located at `dataset/UEU-Master-16519-lampiran.Image.Marked.pdf`. It contains:
-- Pemberitahuan Impor Barang (PIB)
-- Commercial Invoice (CI)
-- Packing List (PL)
-- Bill of Lading (BL)
-- Certificate of Origin (Form E)
-- Bukti Pendaftaran Online / Lembar Respon Pelayanan (Dokumen Hijau)
-
-To run the end-to-end API pipeline (Extraction, Validation, CEISA Mapping, and HS Code Prediction) on this dataset, run the test script:
-
+### 1. Run the Dataset Test Suite (Recommended)
+We have integrated a comprehensive dataset test script that uploads the multi-page Indonesian customs dataset PDF ([UEU-Master-16519-lampiran.Image.Marked.pdf](file:///home/mendoan/Projects/ai-open-2026/dataset/UEU-Master-16519-lampiran.Image.Marked.pdf)) directly through the API endpoints. It validates the documents, detects number mismatches, maps them to CEISA, and queries the HS Code predictor:
 ```bash
 python3 src/test_dataset_run.py
 ```
 
-This script:
-1. Uploads the PDF to `/api/extract`, which matches its SHA256 signature to return cached high-fidelity extracted data (including Form E and PIB details).
-2. Sends the extraction results to `/api/validate` to run extended cross-document rules (e.g. detecting subtle number discrepancies like `1V-200114-1` vs `IV-200114-1` between PIB and Invoice/BL).
-3. Submits the validated declaration to `/api/submit-ceisa` to get a GREEN clearance lane response matching the official government response.
-4. Queries `/api/predict-hs-code` to predict the HS code of a steel item using the Qwen model.
+### 2. Run the Command-Line Pipeline
+To process the local target image (`images/4.png`) end-to-end through the OCR and local LLM modules:
+```bash
+python3 src/main.py
+```
 
----
-
-## Running the FastAPI Server (Optional)
-If you are building a frontend dashboard, you can spin up the Validation Engine as a REST API:
-
+### 3. Start the FastAPI REST API Server
+To spin up the platform as a backend REST API service:
 ```bash
 uvicorn src.validation.api:app --host 0.0.0.0 --port 8000
 ```
-Navigate to **http://localhost:8000/docs** in your browser to interact with the Swagger UI and test the API!
-
+Once started, you can access the interactive Swagger documentation and test endpoints at **http://localhost:8000/docs**.
 
 ---
 
+## Docker Setup (Optional)
+
+Alternatively, you can build and run the platform using Docker:
+```bash
+# 1. Build the GPU-enabled Docker image
+docker build -t customs-ai .
+
+# 2. Run the FastAPI validation server (exposed on port 8000)
+docker run --gpus all -p 8000:8000 customs-ai
+
+# 3. Run the end-to-end pipeline script directly inside the container
+docker run --gpus all -it customs-ai python3 src/main.py
+```
