@@ -8,8 +8,8 @@ numpy
 scikit-learn
 docling
 ollama
-paddleocr
-paddlepaddle-gpu
+paddleocr ; python_version < "3.14"
+paddlepaddle-gpu ; python_version < "3.14"
 transformers
 torch
 timm

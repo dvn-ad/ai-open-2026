@@ -102,7 +102,7 @@ def run_ollama(source, layout_results=None, table_results=None):
     ]
 
     # Find available model or use qwen2.5vl as default
-    model_name = "qwen2.5vl"
+    model_name = "qwen3.5:9b"
     try:
         from ollama import list as ollama_list
         res = ollama_list()
