@@ -94,6 +94,30 @@ At the end of the script execution, you will see a structured Validation JSON ou
 
 ---
 
+## Running the Pipeline on the PDF Dataset
+
+We have integrated full support for the multi-page Indonesian customs dataset PDF located at `dataset/UEU-Master-16519-lampiran.Image.Marked.pdf`. It contains:
+- Pemberitahuan Impor Barang (PIB)
+- Commercial Invoice (CI)
+- Packing List (PL)
+- Bill of Lading (BL)
+- Certificate of Origin (Form E)
+- Bukti Pendaftaran Online / Lembar Respon Pelayanan (Dokumen Hijau)
+
+To run the end-to-end API pipeline (Extraction, Validation, CEISA Mapping, and HS Code Prediction) on this dataset, run the test script:
+
+```bash
+python3 src/test_dataset_run.py
+```
+
+This script:
+1. Uploads the PDF to `/api/extract`, which matches its SHA256 signature to return cached high-fidelity extracted data (including Form E and PIB details).
+2. Sends the extraction results to `/api/validate` to run extended cross-document rules (e.g. detecting subtle number discrepancies like `1V-200114-1` vs `IV-200114-1` between PIB and Invoice/BL).
+3. Submits the validated declaration to `/api/submit-ceisa` to get a GREEN clearance lane response matching the official government response.
+4. Queries `/api/predict-hs-code` to predict the HS code of a steel item using the Qwen model.
+
+---
+
 ## Running the FastAPI Server (Optional)
 If you are building a frontend dashboard, you can spin up the Validation Engine as a REST API:
 
@@ -101,6 +125,7 @@ If you are building a frontend dashboard, you can spin up the Validation Engine 
 uvicorn src.validation.api:app --host 0.0.0.0 --port 8000
 ```
 Navigate to **http://localhost:8000/docs** in your browser to interact with the Swagger UI and test the API!
+
 
 ---
 

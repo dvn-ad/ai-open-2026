@@ -33,8 +33,33 @@ class BillOfLading(BaseModel):
     total_gross_weight: Optional[float] = None
     confidence_scores: Dict[str, float] = Field(default_factory=dict)
 
+class PIBDocument(BaseModel):
+    document_type: str = "PIB"
+    pib_number: Optional[str] = None
+    invoice_number: Optional[str] = None
+    bl_number: Optional[str] = None
+    importer_name: Optional[str] = None
+    importer_tax_id: Optional[str] = None
+    total_gross_weight: Optional[float] = None
+    total_net_weight: Optional[float] = None
+    items: List[DocumentItem] = Field(default_factory=list)
+    confidence_scores: Dict[str, float] = Field(default_factory=dict)
+
+class FormEDocument(BaseModel):
+    document_type: str = "Form E Certificate of Origin"
+    reference_number: Optional[str] = None
+    invoice_number: Optional[str] = None
+    vessel_name: Optional[str] = None
+    departure_date: Optional[str] = None
+    total_gross_weight: Optional[float] = None
+    items: List[DocumentItem] = Field(default_factory=list)
+    confidence_scores: Dict[str, float] = Field(default_factory=dict)
+
 class ExtractedDocuments(BaseModel):
     commercial_invoice: Optional[CommercialInvoice] = None
     packing_list: Optional[PackingList] = None
     bill_of_lading: Optional[BillOfLading] = None
     import_permits: List[str] = Field(default_factory=list) # e.g. ["PI_Besi_Baja", "LS_Tekstil"]
+    pib: Optional[PIBDocument] = None
+    form_e: Optional[FormEDocument] = None
+

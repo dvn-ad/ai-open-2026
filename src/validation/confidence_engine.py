@@ -33,6 +33,10 @@ class ConfidenceEngine:
             ocr_scores.extend(docs.packing_list.confidence_scores.values())
         if docs.bill_of_lading:
             ocr_scores.extend(docs.bill_of_lading.confidence_scores.values())
+        if docs.pib:
+            ocr_scores.extend(docs.pib.confidence_scores.values())
+        if docs.form_e:
+            ocr_scores.extend(docs.form_e.confidence_scores.values())
             
         mean_ocr_confidence = sum(ocr_scores)/len(ocr_scores) if ocr_scores else 100.0
         
@@ -41,7 +45,7 @@ class ConfidenceEngine:
         hs_code_invalid_flag = 1 if any(r.rule_type == 'hs_code_restriction' and not r.passed for r in rule_results) else 0
         missing_permit_flag = 1 if any('Missing' in r.message for r in rule_results if not r.passed) else 0
         
-        weight_mismatch_flag = 1 if any(r.rule_type == 'cross_doc_weight' and not r.passed for r in cross_doc_results) else 0
+        weight_mismatch_flag = 1 if any(r.rule_type in ['cross_doc_weight', 'cross_doc_pib_gross_weight', 'cross_doc_pib_bl_weight'] and not r.passed for r in cross_doc_results) else 0
         quantity_mismatch_flag = 1 if any(r.rule_type == 'cross_doc_quantity' and not r.passed for r in cross_doc_results) else 0
         
         # 5. Predict ML Risk
@@ -82,16 +86,126 @@ class ConfidenceEngine:
         elif final_score < 75 or ml_risk_probability > 30:
             risk_level = "Medium"
             
+        # Helper to map ValidationResult to structured warning
+        def map_warning(r) -> Dict[str, Any]:
+            severity = "medium"
+            rule_id = r.rule_type.upper()
+            suggested_fix = "Please verify the document data."
+            affected_fields = []
+            
+            if r.rule_type == "mandatory_field":
+                severity = "high"
+                if "Tax ID" in r.message:
+                    affected_fields = ["commercial_invoice.importer_tax_id"]
+                    suggested_fix = "Ensure Importer Tax ID (NPWP) is provided on the Commercial Invoice."
+                elif "Importer Name" in r.message:
+                    affected_fields = ["commercial_invoice.importer_name"]
+                    suggested_fix = "Ensure Importer Name is provided on the Commercial Invoice."
+                elif "Currency" in r.message:
+                    affected_fields = ["commercial_invoice.currency"]
+                    suggested_fix = "Ensure Currency is specified on the Commercial Invoice."
+                elif "Packing List total gross weight" in r.message:
+                    affected_fields = ["packing_list.total_gross_weight"]
+                    suggested_fix = "Provide total gross weight on the Packing List."
+                elif "Bill of Lading total gross weight" in r.message:
+                    affected_fields = ["bill_of_lading.total_gross_weight"]
+                    suggested_fix = "Provide total gross weight on the Bill of Lading."
+                else:
+                    affected_fields = ["commercial_invoice"]
+                    suggested_fix = "Provide the missing mandatory field."
+                    
+            elif r.rule_type == "hs_code_restriction":
+                severity = "high"
+                affected_fields = ["commercial_invoice.items[0].hs_code"]
+                if "PI_Besi_Baja" in r.message:
+                    rule_id = "PI_BESI_BAJA"
+                    suggested_fix = "Attach PI_Besi_Baja document or update HS code."
+                elif "LS_Tekstil" in r.message:
+                    rule_id = "LS_TEKSTIL"
+                    suggested_fix = "Attach LS_Tekstil document or update HS code."
+                elif "PI_Kendaraan" in r.message:
+                    rule_id = "PI_KENDARAAN"
+                    suggested_fix = "Attach PI_Kendaraan document or update HS code."
+                    
+            elif r.rule_type == "cross_doc_weight":
+                severity = "medium"
+                affected_fields = ["packing_list.total_gross_weight", "bill_of_lading.total_gross_weight"]
+                suggested_fix = "Reconcile gross weight values between Packing List and Bill of Lading."
+                
+            elif r.rule_type == "cross_doc_quantity":
+                severity = "medium"
+                affected_fields = ["commercial_invoice.items", "packing_list.items"]
+                suggested_fix = "Reconcile item quantities between Commercial Invoice and Packing List."
+                
+            elif r.rule_type == "cross_doc_description":
+                severity = "low"
+                affected_fields = ["commercial_invoice.items", "packing_list.items"]
+                suggested_fix = "Align item description text across Commercial Invoice and Packing List."
+                
+            elif r.rule_type == "cross_doc_missing_item":
+                severity = "high"
+                affected_fields = ["packing_list.items"]
+                suggested_fix = "Add the missing item to the Packing List."
+
+            elif r.rule_type == "cross_doc_pib_invoice":
+                severity = "medium"
+                affected_fields = ["pib.invoice_number", "commercial_invoice.invoice_number"]
+                suggested_fix = "Check and align the invoice number in the PIB and Commercial Invoice."
+
+            elif r.rule_type == "cross_doc_pib_tax_id":
+                severity = "high"
+                affected_fields = ["pib.importer_tax_id", "commercial_invoice.importer_tax_id"]
+                suggested_fix = "Align the importer Tax ID (NPWP) across the PIB and Commercial Invoice."
+
+            elif r.rule_type == "cross_doc_pib_gross_weight":
+                severity = "medium"
+                affected_fields = ["pib.total_gross_weight", "packing_list.total_gross_weight"]
+                suggested_fix = "Align the total gross weight in the PIB and Packing List."
+
+            elif r.rule_type == "cross_doc_pib_bl":
+                severity = "medium"
+                affected_fields = ["pib.bl_number", "bill_of_lading.bl_number"]
+                suggested_fix = "Check and align the Bill of Lading number in the PIB and Bill of Lading."
+
+            elif r.rule_type == "cross_doc_pib_bl_weight":
+                severity = "medium"
+                affected_fields = ["pib.total_gross_weight", "bill_of_lading.total_gross_weight"]
+                suggested_fix = "Align the total gross weight in the PIB and Bill of Lading."
+
+            elif r.rule_type == "cross_doc_co_ref":
+                severity = "high"
+                affected_fields = ["form_e.reference_number", "pib.import_permits"]
+                suggested_fix = "Ensure the Certificate of Origin number matches the reference in the PIB."
+
+            elif r.rule_type == "cross_doc_co_invoice":
+                severity = "medium"
+                affected_fields = ["form_e.invoice_number", "commercial_invoice.invoice_number"]
+                suggested_fix = "Align the invoice number in the Form E Certificate of Origin with the Commercial Invoice."
+
+            return {
+                "severity": severity,
+                "rule_id": rule_id,
+                "message": r.message,
+                "affected_fields": affected_fields,
+                "suggested_fix": suggested_fix
+            }
+
         # Compile warnings
         warnings = []
         for r in rule_results + cross_doc_results:
             if not r.passed:
-                warnings.append(r.message)
+                warnings.append(map_warning(r))
                 
         # Add SHAP explanations if not already present
         for w in ml_result["top_warnings"]:
-            if not any(w in existing_w for existing_w in warnings):
-                warnings.append(f"AI Explainer Note: {w} contributed to the risk score.")
+            if not any(w in existing_w.get("message", "") for existing_w in warnings if isinstance(existing_w, dict)):
+                warnings.append({
+                    "severity": "low",
+                    "rule_id": "ML_EXPLAINER_NOTE",
+                    "message": f"AI Explainer Note: {w} contributed to the risk score.",
+                    "affected_fields": [],
+                    "suggested_fix": "Review ML features contributing to this warning."
+                })
                 
         return {
             "confidence_score": round(final_score, 2),
@@ -101,3 +215,4 @@ class ConfidenceEngine:
             "warnings": warnings,
             "ml_explanations": ml_result["top_warnings"]
         }
+
