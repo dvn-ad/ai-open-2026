@@ -130,7 +130,8 @@ def run_ollama(source, layout_results=None, table_results=None):
         response = chat(
             model=model_name,
             messages=messages,
-            format="json"
+            format="json",
+            think=False
         )
         return response.message.content
     except Exception as e:
