@@ -1,5 +1,9 @@
 from pathlib import Path
 import torch
+import logging
+
+logger = logging.getLogger(__name__)
+
 try:
     from paddleocr import PaddleOCRVL
 except ImportError:
@@ -28,26 +32,27 @@ def run_paddleocr(source):
     # pipeline = PaddleOCRVL(use_layout_detection=False) # Use use_layout_detection to enable/disable layout analysis module
 
     if PaddleOCRVL is not None:
-        pipeline = PaddleOCRVL(
-            device="gpu" if torch.cuda.is_available() else "cpu",
-            use_doc_orientation_classify=True,
-            use_doc_unwarping=True,
-            use_layout_detection=False
-        )
+        try:
+            pipeline = PaddleOCRVL(
+                device="gpu" if torch.cuda.is_available() else "cpu",
+                use_doc_orientation_classify=True,
+                use_doc_unwarping=True,
+                use_layout_detection=False
+            )
 
-        output = pipeline.predict(source)
-        for res in output:
-            # res.print() ## Print the structured prediction output
-            res.save_to_json(save_path='output/paddle.json') ## Save the current image's structured result in JSON format
-            # res.save_to_markdown(save_path=output_dir) ## Save the current image's result in Markdown format
-            # res.save_to_word(save_path="output") ## Save the current image's result in Word format
-        return output
-    else:
+            output = pipeline.predict(source)
+            for res in output:
+                res.save_to_json(save_path='output/paddle.json')
+            return output
+        except Exception as e:
+            logger.warning(f"PaddleOCRVL creation or prediction failed: {e}. Falling back to RapidOCR.")
+            # Let the code fall through to the else (RapidOCR) block
+    
+    if True:  # Run the RapidOCR fallback if PaddleOCRVL was None or failed
         # Fallback to RapidOCR
         from rapidocr import RapidOCR, EngineType
         import json
         import os
-        import torch
 
         # Use CPU/Torch engine
         engine = RapidOCR(params={

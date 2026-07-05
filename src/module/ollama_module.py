@@ -177,5 +177,32 @@ def run_ollama(source, layout_results=None, table_results=None):
         )
         return response.message.content
     except Exception as e:
+        logger.warning(f"Error querying Ollama with {model_name}: {e}")
+        fallback_model = "qwen3.5:0.8b"
+        if model_name != fallback_model:
+            try:
+                from ollama import list as ollama_list
+                res = ollama_list()
+                models_list = getattr(res, 'models', []) or res.get('models', [])
+                has_fallback = False
+                for m in models_list:
+                    name = getattr(m, 'model', None) or getattr(m, 'name', None)
+                    if not name and isinstance(m, dict):
+                        name = m.get('model') or m.get('name')
+                    if name == fallback_model:
+                        has_fallback = True
+                        break
+                if has_fallback:
+                    logger.info(f"Retrying Ollama query with fallback model: {fallback_model}...")  
+                    response = chat(
+                        model=fallback_model,
+                        messages=messages,
+                        format="json",
+                        think=False
+                    )
+                    return response.message.content
+            except Exception as e_fallback:
+                logger.error(f"Fallback query with {fallback_model} failed: {e_fallback}")
+        
         logger.error(f"Error querying Ollama: {e}")
         return None
