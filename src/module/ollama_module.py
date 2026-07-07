@@ -130,7 +130,7 @@ def run_ollama(source, layout_results=None, table_results=None):
     )
 
     # Find available model or use qwen2.5vl as default
-    model_name = "qwen3.5:9b"
+    model_name = "qwen3-vl:8b"
     try:
         from ollama import list as ollama_list
         res = ollama_list()
@@ -144,8 +144,8 @@ def run_ollama(source, layout_results=None, table_results=None):
                 available_models.append(name)
                 
         if available_models:
-            if model_name not in available_models and "qwen3.5:9b" in available_models:
-                model_name = "qwen3.5:9b"
+            if model_name not in available_models and "qwen3-vl:8b" in available_models:
+                model_name = "qwen3-vl:8b"
             elif model_name not in available_models:
                 model_name = available_models[0]
         logger.info(f"Using Ollama model: {model_name}")
@@ -178,7 +178,7 @@ def run_ollama(source, layout_results=None, table_results=None):
         return response.message.content
     except Exception as e:
         logger.warning(f"Error querying Ollama with {model_name}: {e}")
-        fallback_model = "qwen3.5:0.8b"
+        fallback_model = "qwen3-vl:4b"
         if model_name != fallback_model:
             try:
                 from ollama import list as ollama_list
