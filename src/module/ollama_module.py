@@ -1,12 +1,18 @@
 import json
 import logging
 from ollama import chat
+# from config import MODEL_NAME, FALLBACK_MODEL
 
 logger = logging.getLogger(__name__)
 
+MODEL_NAME = "qwen3.5:9b"
+FALLBACK_MODEL = "qwen3.5:2b"
+
 def run_ollama(source, layout_results=None, table_results=None):
+    model_name=MODEL_NAME
+    fallback_model = FALLBACK_MODEL
     """
-    Runs Ollama (Qwen2.5-VL model) with rich layout and table context to structure
+    Runs Ollama with rich layout and table context to structure
     the document content matching the ExtractedDocuments schema.
     """
     logger.info("Preparing prompt for Ollama structuring...")
@@ -129,8 +135,6 @@ def run_ollama(source, layout_results=None, table_results=None):
         "3. Output valid raw JSON conforming strictly to this format.\n"
     )
 
-    # Find available model or use qwen2.5vl as default
-    model_name = "qwen3-vl:8b"
     try:
         from ollama import list as ollama_list
         res = ollama_list()
@@ -144,8 +148,8 @@ def run_ollama(source, layout_results=None, table_results=None):
                 available_models.append(name)
                 
         if available_models:
-            if model_name not in available_models and "qwen3-vl:8b" in available_models:
-                model_name = "qwen3-vl:8b"
+            if model_name not in available_models and fallback_model in available_models:
+                model_name = fallback_model
             elif model_name not in available_models:
                 model_name = available_models[0]
         logger.info(f"Using Ollama model: {model_name}")
@@ -153,18 +157,14 @@ def run_ollama(source, layout_results=None, table_results=None):
         logger.warning(f"Failed to query available Ollama models: {e}. Defaulting to '{model_name}'.")
 
     # Check if the model supports vision
-    is_vision_model = any(v in model_name.lower() for v in ["vl", "vision", "llava", "minicpm"])
+    # is_vision_model = any(v in model_name.lower() for v in ["vl", "vision", "llava", "minicpm"])
     
     message_content = {
         "role": "user",
-        "content": prompt
+        "content": prompt,
+        "images": [source],
     }
-    if is_vision_model:
-        message_content["images"] = [source]
-        logger.info(f"Vision model detected. Passing image to Ollama.")
-    else:
-        logger.info(f"Text model detected. Querying Ollama without image parameter.")
-        
+
     messages = [message_content]
 
     try:
@@ -178,7 +178,6 @@ def run_ollama(source, layout_results=None, table_results=None):
         return response.message.content
     except Exception as e:
         logger.warning(f"Error querying Ollama with {model_name}: {e}")
-        fallback_model = "qwen3-vl:4b"
         if model_name != fallback_model:
             try:
                 from ollama import list as ollama_list

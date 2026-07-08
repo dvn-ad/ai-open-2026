@@ -2,13 +2,19 @@ import json
 import logging
 import re
 from ollama import chat
+# from config import MODEL_NAME, FALLBACK_MODEL
 
 logger = logging.getLogger(__name__)
+
+MODEL_NAME = "qwen3.5:9b"
+FALLBACK_MODEL = "qwen3.5:2b"
+
 
 class HSCodePredictor:
     def __init__(self):
         # Default model matching the one used in ollama_module.py
-        self.model_name = "qwen3.5:9b"
+        self.model_name = MODEL_NAME
+        self.fallback_model= FALLBACK_MODEL
         self._resolve_model()
 
     def _resolve_model(self):
@@ -26,8 +32,8 @@ class HSCodePredictor:
                     available_models.append(name)
                     
             if available_models:
-                if self.model_name not in available_models and "qwen3.5:9b" in available_models:
-                    self.model_name = "qwen3.5:9b"
+                if self.model_name not in available_models and self.fallback_model in available_models:
+                    self.model_name = self.fallback_model
                 elif self.model_name not in available_models:
                     self.model_name = available_models[0]
             logger.info(f"HSCodePredictor using Ollama model: {self.model_name}")
