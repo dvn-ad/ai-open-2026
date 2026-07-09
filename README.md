@@ -105,16 +105,14 @@ Once started, you can access the interactive Swagger documentation and test endp
 
 ---
 
-## Docker Setup (Optional)
+## Docker Setup (Recommended)
 
-Alternatively, you can build and run the platform using Docker:
+You can run the entire platform—including Ollama and the required LLM models—using Docker Compose without installing anything on your host machine:
+
 ```bash
-# 1. Build the GPU-enabled Docker image
-docker build -t customs-ai .
-
-# 2. Run the FastAPI validation server (exposed on port 8000)
-docker run --gpus all -p 8000:8000 customs-ai
-
-# 3. Run the end-to-end pipeline script directly inside the container
-docker run --gpus all -it customs-ai python3 src/main.py
+# Start the application, Ollama, and automatically pull the model
+docker compose up --build
 ```
+
+### Enable GPU Acceleration (Optional)
+If your host machine has an NVIDIA GPU and the NVIDIA Container Toolkit installed, uncomment the `deploy:` blocks in the `docker-compose.yml` file to enable hardware acceleration for both Ollama and PyTorch/PaddleOCR.
