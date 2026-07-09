@@ -157,13 +157,14 @@ def run_ollama(source, layout_results=None, table_results=None):
         logger.warning(f"Failed to query available Ollama models: {e}. Defaulting to '{model_name}'.")
 
     # Check if the model supports vision
-    # is_vision_model = any(v in model_name.lower() for v in ["vl", "vision", "llava", "minicpm"])
+    is_vision_model = any(v in model_name.lower() for v in ["vl", "vision", "llava", "minicpm"])
     
     message_content = {
         "role": "user",
         "content": prompt,
-        "images": [source],
     }
+    if is_vision_model:
+        message_content["images"] = [source]
 
     messages = [message_content]
 
@@ -192,10 +193,18 @@ def run_ollama(source, layout_results=None, table_results=None):
                         has_fallback = True
                         break
                 if has_fallback:
-                    logger.info(f"Retrying Ollama query with fallback model: {fallback_model}...")  
+                    logger.info(f"Retrying Ollama query with fallback model: {fallback_model}...")
+                    is_fallback_vision = any(v in fallback_model.lower() for v in ["vl", "vision", "llava", "minicpm"])
+                    fallback_message_content = {
+                        "role": "user",
+                        "content": prompt,
+                    }
+                    if is_fallback_vision:
+                        fallback_message_content["images"] = [source]
+                        
                     response = chat(
                         model=fallback_model,
-                        messages=messages,
+                        messages=[fallback_message_content],
                         format="json",
                         think=False
                     )
